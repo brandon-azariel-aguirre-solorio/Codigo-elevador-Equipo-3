@@ -1,0 +1,980 @@
+#include <PCF8574.h>
+#include <Arduino.h>
+
+
+int Piso1, Piso2, Piso3, Piso4;
+int irP1, irP2, irP3, irP4;
+int pisoActual = 0, b = -1, IR = 0;
+int pisoIr = 1, piso_Nuevo = 0, Piso_final = 0, Piso_ir2 = 0, Piso_ir3 = 0;
+int latchPin = 3;
+int clockPin = 4;
+int dataPin = 2;
+int latchPin2 = 13;
+int clockPin2 = 12;
+int dataPin2 = 8;
+int incendio12, incendio34, incendiocabina;
+int velocidadM1 = 255;
+int velocidadpuerta = 10;
+int controlvelocidad = 9;
+bool elevador_llego = true;
+int peso = 0;
+int i, Abier_Cerra = 0;
+unsigned long tiempo = millis();
+int Sensor_peso = A0;
+byte Mi_bit = 0b11010000;
+byte Motores = 0b00000000;
+uint8_t PIN_P0;
+uint8_t PIN_P1;
+uint8_t PIN_P2;
+uint8_t PIN_P3;
+uint8_t PIN_P4;
+uint8_t PIN_P5;
+uint8_t PIN_P6;
+uint8_t PIN_P7;
+PCF8574 pcf8574(0x20);
+void setup() {
+
+  pinMode(Sensor_peso, INPUT);
+  pcf8574.begin();
+  pinMode(11, INPUT);  //Cabina incendios
+  pinMode(A2, INPUT);  //Piso 1 y 2 incendios
+  pinMode(A3, INPUT);  //Piso 3 y 4 incendios
+  pinMode(controlvelocidad, OUTPUT);
+  pinMode(velocidadpuerta, OUTPUT);
+  pinMode(latchPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataPin, OUTPUT);
+  pinMode(latchPin2, OUTPUT);
+  pinMode(clockPin2, OUTPUT);
+  pinMode(dataPin2, OUTPUT);
+  pinMode(5, INPUT);
+  pinMode(6, INPUT);
+  pinMode(7, INPUT);
+  pinMode(A1, INPUT);
+  pcf8574.pinMode(P0, INPUT);
+  pcf8574.pinMode(P1, INPUT);
+  pcf8574.pinMode(P2, INPUT);
+  pcf8574.pinMode(P3, INPUT);
+  pcf8574.pinMode(P4, INPUT);
+  pcf8574.pinMode(P5, INPUT);
+  pcf8574.pinMode(P6, INPUT);
+  pcf8574.pinMode(P7, INPUT);
+  digitalWrite(2, LOW);
+  digitalWrite(3, LOW);
+  digitalWrite(4, LOW);
+  Mi_bit = 0b10000000;
+  digitalWrite(latchPin, LOW);
+  shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+  digitalWrite(latchPin, HIGH);
+  Motores = 0b10000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  Serial.begin(9600);
+  PIN_P0 = pcf8574.digitalRead(P0);  // sensor puerta
+  PIN_P1 = pcf8574.digitalRead(P1);  // Lee el valor del pin P1
+  PIN_P2 = pcf8574.digitalRead(P2);  // Lee el valor del pin P2
+  PIN_P3 = pcf8574.digitalRead(P3);  // Lee el valor del pin P3
+  PIN_P4 = pcf8574.digitalRead(P4);  // Lee el valor del pin P4
+  PIN_P5 = pcf8574.digitalRead(P5);  // Lee el valor del pin P5
+  PIN_P6 = pcf8574.digitalRead(P6);  //boton abrir y cerrar
+  PIN_P7 = pcf8574.digitalRead(P7);  //boton EMERGENCIA
+  for (i = 0; i <= 5; i++) {
+    PIN_P1 = pcf8574.digitalRead(P1);  // Lee el valor del pin P1
+    PIN_P2 = pcf8574.digitalRead(P2);  // Lee el valor del pin P2
+    PIN_P3 = pcf8574.digitalRead(P3);  // Lee el valor del pin P3
+    PIN_P4 = pcf8574.digitalRead(P4);  // Lee el valor del pin P4
+    PIN_P5 = pcf8574.digitalRead(P5);  // Lee el valor del pin P5
+    PIN_P6 = pcf8574.digitalRead(P6);  //boton abrir y cerrar
+    PIN_P7 = pcf8574.digitalRead(P7);  //boton EMERGENCIA
+    if (PIN_P1 == 0) {
+      pisoActual = 1;
+
+    } else if (PIN_P2 == 0) {
+      pisoActual = 2;
+
+    } else if (PIN_P3 == 0) {
+      pisoActual = 3;
+
+    } else if (PIN_P4 == 0) {
+      pisoActual = 4;
+    }
+    delay(20);
+  }
+  PIN_P5 = pcf8574.digitalRead(P5);  // Lee el valor del pin P5 puerta
+  PIN_P6 = pcf8574.digitalRead(P6);  // boton abrir o cerrar
+  pisoIr = pisoActual;
+  Piso_final = pisoActual;
+  Abier_Cerra = 0;
+}
+
+void loop() {
+  PIN_P0 = pcf8574.digitalRead(P0);  // sensor puerta
+  PIN_P1 = pcf8574.digitalRead(P1);  // Lee el valor del pin P1
+  PIN_P2 = pcf8574.digitalRead(P2);  // Lee el valor del pin P2
+  PIN_P3 = pcf8574.digitalRead(P3);  // Lee el valor del pin P3
+  PIN_P4 = pcf8574.digitalRead(P4);  // Lee el valor del pin P4
+  PIN_P6 = pcf8574.digitalRead(P6);  // boton abrir o cerrar
+  PIN_P7 = pcf8574.digitalRead(P7);  //boton EMERGENCIA
+  peso = analogRead(Sensor_peso);    // La Resistencia es igual a la lectura del sensor (Analog 0)
+                                     // Serial.print("PESO = ");
+                                     // Serial.println(peso);
+  irP1 = digitalRead(5);
+  irP2 = digitalRead(6);
+  irP3 = digitalRead(7);
+  irP4 = digitalRead(A1);
+  incendio12 = digitalRead(A2);      //Piso 1 y 2 incendios
+  incendio34 = digitalRead(A3);      //Piso 3 y 4 incendios
+  incendiocabina = digitalRead(11);  //Cabina incendios
+  //limit swich
+  if (PIN_P1 == 0) {
+    pisoActual = 1;
+  } else if (PIN_P2 == 0) {
+    pisoActual = 2;
+  } else if (PIN_P3 == 0) {
+    pisoActual = 3;
+  } else if (PIN_P4 == 0) {
+    pisoActual = 4;
+  }
+  ///botone ir
+  if (irP1 == 0) {
+    pisoIr = 1;
+  } else if (irP2 == 0) {
+    pisoIr = 2;
+  } else if (irP3 == 0) {
+    pisoIr = 3;
+  } else if (irP4 == 0) {
+    pisoIr = 4;
+  }
+  //
+  piso_Nuevo = pisoIr;
+  if (pisoActual < piso_Nuevo) {
+    IR = 1;
+  } else if (pisoActual > piso_Nuevo) {
+    IR = 2;
+  }
+  //subir
+  if (IR == 1) {
+    if (Piso_final == 0) {
+      pisoIr = piso_Nuevo;
+      Piso_ir3 = 0;
+      Piso_ir2 = 0;
+    } else if (Piso_ir2 > piso_Nuevo && Piso_ir2 != 0) {
+
+      Piso_ir3 = piso_Nuevo;
+      Piso_ir2 = Piso_ir2;
+      Piso_final = Piso_final;
+
+    } else if (Piso_ir2 < piso_Nuevo && Piso_ir3 != 0) {
+
+      if (Piso_ir3 != piso_Nuevo) {
+        Piso_final = piso_Nuevo;
+      } else {
+        Piso_ir2 = Piso_final;
+        Piso_final = piso_Nuevo;
+      }
+
+    } else if (Piso_ir2 < piso_Nuevo && Piso_ir2 != 0) {
+
+      Piso_ir3 = Piso_ir2;
+      Piso_ir2 = Piso_final;
+      Piso_final = piso_Nuevo;
+
+    } else if (Piso_final < piso_Nuevo)  //menor
+    {
+
+      Piso_ir2 = Piso_final;
+      Piso_final = piso_Nuevo;
+
+    } else if (Piso_final > piso_Nuevo)  //mayor
+    {
+      Piso_ir2 = piso_Nuevo;
+      Piso_final = Piso_final;
+    }
+  } else if (IR == 2) {
+    //bajar
+    if (Piso_final == 0) {
+      pisoIr = piso_Nuevo;
+      Piso_ir3 = 0;
+      Piso_ir2 = 0;
+
+    } else if (Piso_final == pisoActual && Piso_ir2 == 0 && pisoIr == 0) {
+      pisoIr = piso_Nuevo;
+      //Piso_final = pisoIr;
+      Piso_ir3 = 0;
+      Piso_ir2 = 0;
+    } else if (Piso_final == pisoActual && piso_Nuevo < Piso_final) {
+      Piso_final = piso_Nuevo;
+      Piso_ir2 = piso_Nuevo;
+      pisoIr = piso_Nuevo;
+      Piso_ir3 = 0;
+
+    } else if (Piso_ir2 > piso_Nuevo) {
+      if (Piso_ir3 > piso_Nuevo) {
+
+        if (Piso_ir2 > piso_Nuevo && piso_Nuevo == 1) {
+          Piso_final = piso_Nuevo;
+        } else if (Piso_ir2 > piso_Nuevo) {
+          Piso_final = piso_Nuevo;
+          Piso_ir2 = piso_Nuevo;
+          Piso_ir3 = Piso_ir3;
+        } else {
+          Piso_final = Piso_final;
+          Piso_ir2 = Piso_final;
+          Piso_ir3 = Piso_ir3;
+        }
+
+      } else if (Piso_ir3 < piso_Nuevo) {
+        Piso_ir3 = Piso_ir2;
+        Piso_ir2 = piso_Nuevo;
+        Piso_final = Piso_final;
+      }
+
+    } else if (Piso_ir3 < piso_Nuevo) {
+      Piso_ir2 = Piso_ir3;
+      Piso_ir3 = piso_Nuevo;
+
+      Piso_final = Piso_final;
+    } else if (Piso_ir2 > 0 && Piso_ir2 < piso_Nuevo && Piso_final < piso_Nuevo) {
+
+      Piso_ir3 = piso_Nuevo;
+
+
+
+    } else if (Piso_final < piso_Nuevo)  //menor
+    {
+
+      Piso_final = piso_Nuevo;
+      Piso_ir2 = Piso_final;
+      Piso_ir3 = Piso_ir2;
+
+    } else if (Piso_final > piso_Nuevo)  //mayor
+    {
+      Piso_ir2 = Piso_final;
+      if (Piso_final == 5) {
+        Piso_final = pisoActual;
+      } else {
+        Piso_final = piso_Nuevo;
+      }
+    }
+  }
+
+  if (incendiocabina == 1 && incendio12 == 1 && incendio34 == 1) {
+    if (PIN_P0 == 1) {
+      //Serial.print("\n puerta cerrada");
+      if (peso < 967) {
+        //
+        if (Piso_ir3 > 0) {
+          if (pisoActual == 1 && Piso_ir3 == 1) {
+            Mi_bit = 0b10010000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (PIN_P1 == 0) {
+              pisoIr3_reset();
+            }
+
+          } else if (pisoActual == 1 && Piso_ir3 == 2) {
+            Mi_bit = 0b10001010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+            if (PIN_P2 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 1 && Piso_ir3 == 3) {
+            Mi_bit = 0b10011010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_dos_pisos();
+            if (PIN_P3 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 1 && Piso_ir2 == 4) {
+            Mi_bit = 0b10000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_tres_pisos();
+            if (PIN_P4 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 2 && Piso_ir3 == 1) {
+            Mi_bit = 0b01010001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P1 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 2 && Piso_ir3 == 2) {
+            Mi_bit = 0b01001000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (PIN_P2 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 2 && Piso_ir3 == 3) {
+            Mi_bit = 0b01011010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+            if (PIN_P3 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 2 && Piso_ir3 == 4) {
+            Mi_bit = 0b01000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_dos_pisos();
+            if (PIN_P4 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 3 && Piso_ir3 == 1) {
+            Mi_bit = 0b11010001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_dos_pisos();
+            if (PIN_P1 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 3 && Piso_ir3 == 2) {
+            Mi_bit = 0b11001001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P2 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 3 && Piso_ir3 == 3) {
+            Mi_bit = 0b11011000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (PIN_P3 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 3 && Piso_ir3 == 4) {
+            Mi_bit = 0b11000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+            if (PIN_P4 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 4 && Piso_ir3 == 1) {
+            Mi_bit = 0b00110001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_tres_pisos();
+            if (PIN_P1 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 4 && Piso_ir3 == 2) {
+            Mi_bit = 0b00101001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_dos_pisos();
+            if (PIN_P2 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 4 && Piso_ir3 == 3) {
+            Mi_bit = 0b00111001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P3 == 0) {
+              pisoIr3_reset();
+            }
+          } else if (pisoActual == 4 && Piso_ir3 == 4) {
+            Mi_bit = 0b00100100;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (PIN_P4 == 0) {
+              pisoIr3_reset();
+            }
+          }
+        }
+        if (Piso_ir2 > 0 && Piso_ir3 == 0) {
+          if (pisoActual == 1 && Piso_ir2 == 1) {
+            Mi_bit = 0b10010000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (PIN_P1 == 0) {
+              pisoIr2_reset();
+            }
+
+          } else if (pisoActual == 1 && Piso_ir2 == 2) {
+            Mi_bit = 0b10001010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+            if (PIN_P2 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 1 && Piso_ir2 == 3) {
+            Mi_bit = 0b10011010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_dos_pisos();
+            if (PIN_P3 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 1 && Piso_ir2 == 4) {
+            Mi_bit = 0b10000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_tres_pisos();
+            if (PIN_P4 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 2 && Piso_ir2 == 1) {
+            Mi_bit = 0b01010001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P1 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 2 && Piso_ir2 == 2) {
+            Mi_bit = 0b01001000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            parar();
+            if (PIN_P2 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 2 && Piso_ir2 == 3) {
+            Mi_bit = 0b01011010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+            if (PIN_P3 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 2 && Piso_ir2 == 4) {
+            Mi_bit = 0b01000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_dos_pisos();
+            if (PIN_P4 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 3 && Piso_ir2 == 1) {
+            Mi_bit = 0b11010001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_dos_pisos();
+            if (PIN_P1 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 3 && Piso_ir2 == 2) {
+            Mi_bit = 0b11001001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P2 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 3 && Piso_ir2 == 3) {
+            Mi_bit = 0b11011000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            parar();
+            if (PIN_P3 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 3 && Piso_ir2 == 4) {
+            Mi_bit = 0b11000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+            if (PIN_P4 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 4 && Piso_ir2 == 1) {
+            Mi_bit = 0b00110001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_tres_pisos();
+            if (PIN_P1 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 4 && Piso_ir2 == 2) {
+            Mi_bit = 0b00101001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_dos_pisos();
+            if (PIN_P2 == 0) {
+              pisoIr2_reset();
+            }
+          } else if (pisoActual == 4 && Piso_ir2 == 3) {
+            Mi_bit = 0b00111001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P3 == 0) {
+              pisoIr2_reset();
+            }
+
+          } else if (pisoActual == 4 && Piso_ir2 == 4) {
+            Mi_bit = 0b00100100;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (PIN_P4 == 0) {
+              pisoIr2_reset();
+            }
+          }
+        }
+        if (pisoIr > 0 && Piso_ir2 == 0 && Piso_ir3 == 0) {
+
+          if (pisoActual == 1 && pisoIr == 1) {
+            Mi_bit = 0b10010000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (irP1 == 0) {
+              abrir_puerta_boton();
+            }
+            if (PIN_P1 == 0) {
+              pisoIr_reset();
+            }
+            Piso_final = pisoActual;
+
+          } else if (pisoActual == 1 && pisoIr == 2) {
+            Mi_bit = 0b10001010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+
+            if (PIN_P2 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 1 && pisoIr == 3) {
+            Mi_bit = 0b10011010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_dos_pisos();
+            if (PIN_P3 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 1 && pisoIr == 4) {
+            Mi_bit = 0b10000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_tres_pisos();
+            if (PIN_P4 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 2 && pisoIr == 1) {
+            Mi_bit = 0b01010001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P1 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 2 && pisoIr == 2) {
+            Mi_bit = 0b01001000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (irP2 == 0) {
+              abrir_puerta_boton();
+            }
+            if (PIN_P2 == 0) {
+              pisoIr_reset();
+            }
+            Piso_final = pisoActual;
+          } else if (pisoActual == 2 && pisoIr == 3) {
+            Mi_bit = 0b01011010;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+            if (PIN_P3 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 2 && pisoIr == 4) {
+            Mi_bit = 0b01000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_dos_pisos();
+            if (PIN_P4 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 3 && pisoIr == 1) {
+            Mi_bit = 0b11010001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_dos_pisos();
+            if (PIN_P1 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 3 && pisoIr == 2) {
+            Mi_bit = 0b11001001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P2 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 3 && pisoIr == 3) {
+            Mi_bit = 0b11011000;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (irP3 == 0) {
+              abrir_puerta_boton();
+            }
+            if (PIN_P3 == 0) {
+              pisoIr_reset();
+            }
+            Piso_final = pisoActual;
+          } else if (pisoActual == 3 && pisoIr == 4) {
+            Mi_bit = 0b11000110;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            subir_un_piso();
+            if (PIN_P4 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 4 && pisoIr == 1) {
+            Mi_bit = 0b00110001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_tres_pisos();
+            if (PIN_P1 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 4 && pisoIr == 2) {
+            Mi_bit = 0b00101001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_dos_pisos();
+            if (PIN_P2 == 0) {
+              pisoIr_reset();
+            }
+          } else if (pisoActual == 4 && pisoIr == 3) {
+            Mi_bit = 0b00111001;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            bajar_un_piso();
+            if (PIN_P3 == 0) {
+              pisoIr_reset();
+            }
+
+          } else if (pisoActual == 4 && pisoIr == 4) {
+            Mi_bit = 0b00100100;
+            digitalWrite(latchPin, LOW);
+            shiftOut(dataPin, clockPin, LSBFIRST, Mi_bit);
+            digitalWrite(latchPin, HIGH);
+            if (irP4 == 0) {
+              abrir_puerta_boton();
+            }
+            if (PIN_P4 == 0) {
+
+              pisoIr_reset();
+            }
+            Piso_final = pisoActual;
+          }
+        } else {
+          elevador_llego = false;
+          b = -1;
+          parar();
+          if (PIN_P6 == 0) {
+            if (Abier_Cerra == 0) {
+              abrirpuerta();
+              Motores = 0b00000000;
+              digitalWrite(latchPin2, LOW);
+              shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+              digitalWrite(latchPin2, HIGH);
+              analogWrite(controlvelocidad, 0);
+              Abier_Cerra = 1;
+              delay(50);
+              cerrarpuerta();
+            } else if (Abier_Cerra == 1) {
+              cerrarpuerta();
+              delay(50);
+              Abier_Cerra = 0;
+            }
+          }
+          if (PIN_P7 == 0) {
+            Motores = 0b00000001;
+            digitalWrite(latchPin2, LOW);
+            shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+            digitalWrite(latchPin2, HIGH);
+            delay(10);
+          }
+        }
+      } else {
+        Motores = 0b00000000;
+        digitalWrite(latchPin2, LOW);
+        shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+        digitalWrite(latchPin2, HIGH);
+        analogWrite(controlvelocidad, 0);
+        //Serial.print(" El elevador sobrepaso el peso total ");
+      }
+    } else if (PIN_P0 == 0) {
+
+      if (PIN_P7 == 0) {
+        Motores = 0b00001001;
+        digitalWrite(latchPin2, LOW);
+        shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+        digitalWrite(latchPin2, HIGH);
+        delay(10);
+      }
+      PIN_P5 = pcf8574.digitalRead(P5);  // Lee el valor del pin P5 puerta
+      if (PIN_P5 == 1) {
+        Motores = 0b00000000;
+        digitalWrite(latchPin2, LOW);
+        shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+        digitalWrite(latchPin2, HIGH);
+        analogWrite(controlvelocidad, 0);
+        // Serial.print("\n obstaculos puerta abierta");
+      } else {
+        delay(10);
+        Abier_Cerra = 1;
+        delay(50);
+        cerrarpuerta();
+      }
+    }
+  } else if (incendio34 == 0 && incendio12 == 0 && incendiocabina == 0) {
+    Motores = 0b00001111;
+    digitalWrite(latchPin2, LOW);
+    shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+    digitalWrite(latchPin2, HIGH);
+  } else if (incendio34 == 0 && incendio12 == 0) {
+    Motores = 0b00001110;
+    digitalWrite(latchPin2, LOW);
+    shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+    digitalWrite(latchPin2, HIGH);
+  } else if (incendiocabina == 0) {
+    Motores = 0b00001001;
+    digitalWrite(latchPin2, LOW);
+    shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+    digitalWrite(latchPin2, HIGH);
+  } else if (incendio12 == 0) {
+    Motores = 0b00001100;
+    digitalWrite(latchPin2, LOW);
+    shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+    digitalWrite(latchPin2, HIGH);
+  } else if (incendio34 == 0) {
+    Motores = 0b00001010;
+    digitalWrite(latchPin2, LOW);
+    shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+    digitalWrite(latchPin2, HIGH);
+  }
+
+  //incendiocabina == 1 && incendio12 == 1 && incendio34 == 1
+  /* Serial.print(" \n");
+   Serial.print(" Ir 1 : ");
+  Serial.print(Piso_ir3);
+   Serial.print(" Ir 2 : ");
+  Serial.print(Piso_ir2);
+  Serial.print(" Final : ");
+  Serial.print(Piso_final);
+   Serial.print(" B : ");
+  Serial.print(b);*/
+  delay(10);
+}
+
+void resetearviaje() {
+  Piso_final = 0;
+  piso_Nuevo = 0;
+  Piso_ir2 = 0;
+}
+void subir_un_piso() {
+  Motores = 0b10000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 200);
+  delay(100);
+}
+void subir_dos_pisos() {
+  Motores = 0b10000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 220);
+  delay(100);
+}
+void subir_tres_pisos() {
+  Motores = 0b10000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 255);
+  delay(100);
+}
+void bajar_un_piso() {
+  Motores = 0b01000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 200);
+  delay(100);
+}
+void bajar_dos_pisos() {
+  Motores = 0b01000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 220);
+  delay(100);
+}
+void bajar_tres_pisos() {
+
+  Motores = 0b01000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 255);
+  delay(100);
+}
+void parototal() {
+  Motores = 0b00000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 0);
+  // Serial.print("\n Detenido");
+}
+void abrirpuerta() {
+  Motores = 0b00010000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(velocidadpuerta, 100);
+  delay(50);
+  Motores = 0b00000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 0);
+}
+void cerrarpuerta() {
+  Motores = 0b00100000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(velocidadpuerta, 100);
+  delay(50);
+  Motores = 0b00000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 0);
+}
+void abrir_puerta_boton() {
+  abrirpuerta();
+  delay(50);
+  Motores = 0b00000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 0);
+  delay(50);
+  cerrarpuerta();
+  elevador_llego = false;
+  Motores = 0b00000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 0);
+}
+void parar() {
+
+  Motores = 0b00000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 0);
+  if (b > 1) {
+    if (elevador_llego != false) {
+      abrirpuerta();
+      delay(50);
+      Motores = 0b00000000;
+      digitalWrite(latchPin2, LOW);
+      shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+      digitalWrite(latchPin2, HIGH);
+      analogWrite(controlvelocidad, 0);
+      Abier_Cerra = 0;
+      delay(20);
+      Abier_Cerra = 1;
+      delay(50);
+      cerrarpuerta();
+      elevador_llego = false;
+    }
+  }
+
+  Motores = 0b00000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 0);
+  b = b + 1;
+}
+void pisoIr3_reset() {
+  Piso_ir3 = 0;
+  pisoIr = Piso_final;
+  elevador_llego = true;
+  parar();
+  b = b + 1;
+}
+void pisoIr2_reset() {
+  Piso_ir2 = 0;
+  pisoIr = Piso_final;
+  elevador_llego = true;
+  parar();
+  b = b + 1;
+}
+void pisoIr_reset() {
+  pisoIr = 0;
+  piso_Nuevo = 0;
+  Piso_ir2 = 0;
+  elevador_llego = true;
+  parar();
+  b = b + 1;
+}
