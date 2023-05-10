@@ -505,7 +505,7 @@ void PCF8574::digitalWrite(uint8_t pin, uint8_t value) {
 
 int Piso1, Piso2, Piso3, Piso4;
 int irP1, irP2, irP3, irP4;
-int pisoActual = 0, b = -1, IR = 0;
+int pisoActual = 0, b = -2, IR = 0;
 int pisoIr = 1, piso_Nuevo = 0, Piso_final = 0, Piso_ir2 = 0, Piso_ir3 = 0;
 int latchPin = 3;
 int clockPin = 4;
@@ -534,7 +534,6 @@ uint8_t PIN_P6;
 uint8_t PIN_P7;
 PCF8574 pcf8574(0x20);
 void setup() {
-
   pinMode(Sensor_peso, INPUT);
   pcf8574.begin();
   pinMode(11, INPUT);  //Cabina incendios
@@ -607,6 +606,7 @@ void setup() {
   pisoIr = pisoActual;
   Piso_final = pisoActual;
   Abier_Cerra = 0;
+  b = 0;
 }
 
 void loop() {
@@ -761,7 +761,7 @@ void loop() {
   }
 
   if (incendiocabina == 1 && incendio12 == 1 && incendio34 == 1) {
-    if (PIN_P0 == 1) {
+    if (PIN_P0 == 0) {
       //Serial.print("\n puerta cerrada");
       if (peso < 967) {
         //
@@ -1221,16 +1221,12 @@ void loop() {
           }
         } else {
           elevador_llego = false;
+          Serial.print(" xd: ");
           b = -1;
           parar();
           if (PIN_P6 == 0) {
             if (Abier_Cerra == 0) {
               abrirpuerta();
-              Motores = 0b00000000;
-              digitalWrite(latchPin2, LOW);
-              shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
-              digitalWrite(latchPin2, HIGH);
-              analogWrite(controlvelocidad, 0);
               Abier_Cerra = 1;
               delay(50);
               cerrarpuerta();
@@ -1272,8 +1268,8 @@ void loop() {
         shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
         digitalWrite(latchPin2, HIGH);
         analogWrite(controlvelocidad, 0);
-        // Serial.print("\n obstaculos puerta abierta");
-      } else {
+        Serial.print("\n obstaculos puerta abierta");
+      } else if (PIN_P5 == 0) {
         delay(10);
         Abier_Cerra = 1;
         delay(50);
@@ -1308,6 +1304,15 @@ void loop() {
   }
 
   //incendiocabina == 1 && incendio12 == 1 && incendio34 == 1
+  Serial.print(" \n");
+  Serial.print(" Ir 1 : ");
+  Serial.print(Piso_ir3);
+  Serial.print(" Ir 2 : ");
+  Serial.print(Piso_ir2);
+  Serial.print(" Final : ");
+  Serial.print(Piso_final);
+  Serial.print(" B : ");
+  Serial.print(b);
   /* Serial.print(" \n");
    Serial.print(" Ir 1 : ");
   Serial.print(Piso_ir3);
@@ -1317,7 +1322,7 @@ void loop() {
   Serial.print(Piso_final);
    Serial.print(" B : ");
   Serial.print(b);*/
-  delay(10);
+  delay(50);
 }
 
 void resetearviaje() {
@@ -1326,55 +1331,61 @@ void resetearviaje() {
   Piso_ir2 = 0;
 }
 void subir_un_piso() {
+  delay(20);
   Motores = 0b10000000;
   digitalWrite(latchPin2, LOW);
   shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
   digitalWrite(latchPin2, HIGH);
-  analogWrite(controlvelocidad, 200);
-  delay(100);
+  analogWrite(controlvelocidad, 255);
+  delay(200);
 }
 void subir_dos_pisos() {
+  delay(20);
   Motores = 0b10000000;
   digitalWrite(latchPin2, LOW);
   shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
   digitalWrite(latchPin2, HIGH);
-  analogWrite(controlvelocidad, 220);
-  delay(100);
+  analogWrite(controlvelocidad, 255);
+  delay(200);
 }
 void subir_tres_pisos() {
+  delay(20);
   Motores = 0b10000000;
   digitalWrite(latchPin2, LOW);
   shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
   digitalWrite(latchPin2, HIGH);
   analogWrite(controlvelocidad, 255);
-  delay(100);
+  delay(400);
 }
 void bajar_un_piso() {
-  Motores = 0b01000000;
-  digitalWrite(latchPin2, LOW);
-  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
-  digitalWrite(latchPin2, HIGH);
-  analogWrite(controlvelocidad, 200);
-  delay(100);
-}
-void bajar_dos_pisos() {
-  Motores = 0b01000000;
-  digitalWrite(latchPin2, LOW);
-  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
-  digitalWrite(latchPin2, HIGH);
-  analogWrite(controlvelocidad, 220);
-  delay(100);
-}
-void bajar_tres_pisos() {
-
+  delay(20);
   Motores = 0b01000000;
   digitalWrite(latchPin2, LOW);
   shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
   digitalWrite(latchPin2, HIGH);
   analogWrite(controlvelocidad, 255);
-  delay(100);
+  delay(200);
+}
+void bajar_dos_pisos() {
+  delay(20);
+  Motores = 0b01000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 255);
+  delay(300);
+}
+void bajar_tres_pisos() {
+  delay(20);
+  Motores = 0b01000000;
+  digitalWrite(latchPin2, LOW);
+  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
+  digitalWrite(latchPin2, HIGH);
+  analogWrite(controlvelocidad, 255);
+  delay(400);
 }
 void parototal() {
+  delay(20);
   Motores = 0b00000000;
   digitalWrite(latchPin2, LOW);
   shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
@@ -1387,26 +1398,16 @@ void abrirpuerta() {
   digitalWrite(latchPin2, LOW);
   shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
   digitalWrite(latchPin2, HIGH);
-  analogWrite(velocidadpuerta, 100);
-  delay(50);
-  Motores = 0b00000000;
-  digitalWrite(latchPin2, LOW);
-  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
-  digitalWrite(latchPin2, HIGH);
-  analogWrite(controlvelocidad, 0);
+  analogWrite(velocidadpuerta, 200);
+  delay(100);
 }
 void cerrarpuerta() {
   Motores = 0b00100000;
   digitalWrite(latchPin2, LOW);
   shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
   digitalWrite(latchPin2, HIGH);
-  analogWrite(velocidadpuerta, 100);
-  delay(50);
-  Motores = 0b00000000;
-  digitalWrite(latchPin2, LOW);
-  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
-  digitalWrite(latchPin2, HIGH);
-  analogWrite(controlvelocidad, 0);
+  analogWrite(velocidadpuerta, 200);
+  delay(100);
 }
 void abrir_puerta_boton() {
   abrirpuerta();
@@ -1419,14 +1420,9 @@ void abrir_puerta_boton() {
   delay(50);
   cerrarpuerta();
   elevador_llego = false;
-  Motores = 0b00000000;
-  digitalWrite(latchPin2, LOW);
-  shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
-  digitalWrite(latchPin2, HIGH);
-  analogWrite(controlvelocidad, 0);
 }
 void parar() {
-
+  delay(50);
   Motores = 0b00000000;
   digitalWrite(latchPin2, LOW);
   shiftOut(dataPin2, clockPin2, LSBFIRST, Motores);
@@ -1461,21 +1457,21 @@ void pisoIr3_reset() {
   Piso_ir3 = 0;
   pisoIr = Piso_final;
   elevador_llego = true;
+  b = b + 2;
   parar();
-  b = b + 1;
 }
 void pisoIr2_reset() {
   Piso_ir2 = 0;
   pisoIr = Piso_final;
   elevador_llego = true;
-  parar();
   b = b + 1;
+  parar();
 }
 void pisoIr_reset() {
   pisoIr = 0;
   piso_Nuevo = 0;
   Piso_ir2 = 0;
   elevador_llego = true;
-  parar();
   b = b + 1;
+  parar();
 }
